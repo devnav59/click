@@ -25,13 +25,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android platforms
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          yes | sdkmanager --licenses || true
+
       - name: Generate debug & release keystore (public signature)
         run: |
-          # Generate a public debug keystore for CI builds
           if [ ! -f debug.keystore ]; then
             keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=AutoClickDebug, OU=Dev, O=AutoClick, L=Tehran, S=Tehran, C=IR"
           fi
-          # Generate a release keystore (public, checked-in password autoclick123) so build never fails without secrets
           if [ ! -f release.keystore ]; then
             keytool -genkeypair -v -keystore release.keystore -storepass autoclick123 -alias autoclick -keypass autoclick123 -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=AutoClick, OU=AutoClick, O=AutoClick, L=Tehran, S=Tehran, C=IR"
           fi
@@ -40,16 +43,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Download Gradle Wrapper jar if missing
+      - name: Setup Gradle 8.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.6
+
+      - name: Generate Gradle Wrapper jar if missing
         run: |
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Downloading gradle-wrapper.jar"
-            curl -sL -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar || \
-            wget -q -O gradle/wrapper/gradle-wrapper.jar https://services.gradle.org/distributions/gradle-8.6-bin.zip
-            # fallback: use gradle wrapper generation via sdkmanager wrapper? We'll try to fetch via maven
-            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
-              curl -L -o gradle/wrapper/gradle-wrapper.jar https://repo1.maven.org/maven2/org/gradle/wrapper/gradle-wrapper/8.6/gradle-wrapper-8.6.jar || true
-            fi
+            gradle wrapper --gradle-version 8.6
           fi
           ls -lh gradle/wrapper/
 
