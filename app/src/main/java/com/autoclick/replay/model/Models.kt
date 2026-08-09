@@ -6,6 +6,7 @@ data class Task(
     var targetPackage: String = "",
     var actions: MutableList<Action> = mutableListOf(),
     var params: MutableList<TaskParam> = mutableListOf(),
+    var isQuick: Boolean = false,
     var createdAt: Long = System.currentTimeMillis()
 )
 

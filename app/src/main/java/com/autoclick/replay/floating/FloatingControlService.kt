@@ -19,16 +19,17 @@ import com.autoclick.replay.service.AutoClickAccessibilityService
 import com.autoclick.replay.util.TaskRepository
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.NotificationCompat
 
 class FloatingControlService : Service() {
     private var windowManager: WindowManager? = null
     private var floatingView: View? = null
     private var selectedTaskId: String? = null
-    private var isMinimized = false
+    private var isMenuOpen = false
+    private var isPanelOpen = false
 
     override fun onBind(intent: Intent?): IBinder? = null
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         selectedTaskId = intent?.getStringExtra("taskId") ?: selectedTaskId
         if (intent?.getStringExtra("action") == "close") { stopSelf(); return START_NOT_STICKY }
@@ -38,60 +39,96 @@ class FloatingControlService : Service() {
 
     private fun showFloating() {
         if (floatingView != null) return
-        try {
-            startForegroundNotification()
-        } catch (_: Exception) {}
+        try { startForegroundNotification() } catch (_: Exception) {}
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        // Use Material theme for inflation — Service context has no theme, so wrap it
         val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
         val inflater = LayoutInflater.from(themedContext)
         try {
-            floatingView = inflater.cloneInContext(themedContext).inflate(R.layout.view_floating_full, null)
+            floatingView = inflater.cloneInContext(themedContext).inflate(R.layout.view_floating_root, null)
         } catch (e: Exception) {
-            // Fallback to simple view if Material inflation fails
             Toast.makeText(this, "خطا در نمایش پنل: ${e.message}", Toast.LENGTH_LONG).show()
-            try {
-                floatingView = LayoutInflater.from(this).inflate(R.layout.view_floating, null)
-            } catch (_: Exception) { return }
+            try { floatingView = LayoutInflater.from(this).inflate(R.layout.view_floating, null) } catch (_: Exception) { return }
         }
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
         val params = WindowManager.LayoutParams(
-            360.dp(), WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         )
-        params.gravity = Gravity.TOP or Gravity.START
-        params.x = 20; params.y = 120
+        params.gravity = Gravity.BOTTOM or Gravity.END
+        params.x = 16; params.y = 120
 
-        // Drag
-        val header = floatingView!!.findViewById<View>(R.id.headerDrag)
+        val fabMain = floatingView!!.findViewById<FloatingActionButton>(R.id.fabMain)
+        val quickContainer = floatingView!!.findViewById<LinearLayout>(R.id.quickContainer)
+        val panelContainer = floatingView!!.findViewById<View>(R.id.panelFullContainer)
+        // panel is inside container
+        val panelView = panelContainer // panelContainer itself is the card, find inner views via floatingView
+
+        // Drag via FAB
         var initialX = 0; var initialY = 0; var initialTouchX = 0f; var initialTouchY = 0f
         var isDragging = false
-        header.setOnTouchListener { _, event ->
+        fabMain.setOnTouchListener { _, event ->
             when(event.action){
                 MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - initialTouchX).toInt(); val dy = (event.rawY - initialTouchY).toInt()
                     if (Math.abs(dx)>10 || Math.abs(dy)>10) isDragging=true
-                    params.x = initialX + dx; params.y = initialY + dy
+                    // For BOTTOM|END gravity, x increases to left, y to top
+                    params.x = initialX - dx; params.y = initialY - dy
                     windowManager?.updateViewLayout(floatingView, params); true
                 }
-                MotionEvent.ACTION_UP -> { isDragging }
+                MotionEvent.ACTION_UP -> {
+                    if (!isDragging) { toggleMenu() }
+                    isDragging
+                }
+                else -> false
+            }
+        }
+        // Also drag via header if panel open
+        val header = floatingView!!.findViewById<View>(R.id.headerDrag)
+        header?.setOnTouchListener { _, event ->
+            when(event.action){
+                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; true}
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX - (event.rawX - initialTouchX).toInt()
+                    params.y = initialY - (event.rawY - initialTouchY).toInt()
+                    windowManager?.updateViewLayout(floatingView, params); true
+                }
                 else -> false
             }
         }
 
-        // Views
+        fun toggleMenu() {
+            isMenuOpen = !isMenuOpen
+            quickContainer.visibility = if (isMenuOpen) View.VISIBLE else View.GONE
+            // Animate fab
+            fabMain.animate().rotation(if(isMenuOpen) 45f else 0f).setDuration(200).start()
+            if (!isMenuOpen) {
+                // also close panel when closing menu
+                panelContainer.visibility = View.GONE
+                isPanelOpen = false
+            }
+            refreshQuickButtons()
+        }
+        fun togglePanel() {
+            isPanelOpen = !isPanelOpen
+            panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
+            if (isPanelOpen) {
+                quickContainer.visibility = View.GONE
+                isMenuOpen = false
+                fabMain.animate().rotation(0f).start()
+            }
+        }
+
+        // Panel inner views (find via floatingView)
         val txtStatus = floatingView!!.findViewById<TextView>(R.id.txtFloatingStatusFull)
         val btnRec = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingRecFull)
         val btnPlay = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingPlayFull)
         val btnClose = floatingView!!.findViewById<View>(R.id.btnFloatingCloseFull)
         val btnMin = floatingView!!.findViewById<View>(R.id.btnFloatingMinimize)
         val toggle = floatingView!!.findViewById<MaterialButtonToggleGroup>(R.id.toggleGroup)
-        val btnTabTasks = floatingView!!.findViewById<View>(R.id.btnTabTasks)
-        val btnTabCurrent = floatingView!!.findViewById<View>(R.id.btnTabCurrent)
         val sectionTasks = floatingView!!.findViewById<View>(R.id.sectionTasks)
         val sectionCurrent = floatingView!!.findViewById<View>(R.id.sectionCurrent)
         val recyclerTasks = floatingView!!.findViewById<RecyclerView>(R.id.recyclerTasksFloat)
@@ -106,35 +143,94 @@ class FloatingControlService : Service() {
         val btnAddInput = floatingView!!.findViewById<View>(R.id.btnAddInputFloat)
         val btnClear = floatingView!!.findViewById<View>(R.id.btnClearFloat)
 
-        recyclerTasks.layoutManager = LinearLayoutManager(this)
-        recyclerParams.layoutManager = LinearLayoutManager(this)
-        recyclerActions.layoutManager = LinearLayoutManager(this)
+        recyclerTasks.layoutManager = LinearLayoutManager(themedContext)
+        recyclerParams.layoutManager = LinearLayoutManager(themedContext)
+        recyclerActions.layoutManager = LinearLayoutManager(themedContext)
 
-        // Auto select first task if none
-        if (selectedTaskId == null) {
-            selectedTaskId = TaskRepository.load(this).firstOrNull()?.id
+        if (selectedTaskId == null) selectedTaskId = TaskRepository.load(this).firstOrNull()?.id
+
+        fun refreshQuickButtons() {
+            quickContainer.removeAllViews()
+            val tasks = TaskRepository.load(this).filter { it.isQuick }
+            if (tasks.isEmpty()) {
+                // show hint if menu open and no quick tasks
+                if (isMenuOpen) {
+                    val hint = TextView(themedContext).apply {
+                        text = "وظیفه‌ای سنجاق نشده\nاز لیست وظایف ★ بزن"
+                        textSize = 11f
+                        setTextColor(0xFF49454F.toInt())
+                        setBackgroundResource(R.drawable.bg_chip)
+                        setPadding(12.dp(), 8.dp(), 12.dp(), 8.dp())
+                        gravity = android.view.Gravity.CENTER
+                    }
+                    quickContainer.addView(hint)
+                }
+                return
+            }
+            tasks.forEach { task ->
+                val btn = MaterialButton(themedContext, null, com.google.android.material.R.attr.materialButtonStyle).apply {
+                    text = task.name
+                    textSize = 12f
+                    isAllCaps = false
+                    cornerRadius = 16.dp()
+                    setPadding(16.dp(), 0, 16.dp(), 0)
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, 48.dp()).apply { bottomMargin = 8.dp() }
+                    // icon
+                    setIconResource(android.R.drawable.ic_media_play)
+                    iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+                }
+                btn.setOnClickListener {
+                    // One-click execute without opening panel
+                    playTask(task.id)
+                }
+                btn.setOnLongClickListener {
+                    // open panel and select this task
+                    selectedTaskId = task.id
+                    panelContainer.visibility = View.VISIBLE
+                    isPanelOpen = true
+                    quickContainer.visibility = View.GONE
+                    isMenuOpen = false
+                    fabMain.animate().rotation(0f).start()
+                    refreshAllWrapper()
+                    true
+                }
+                quickContainer.addView(btn)
+            }
+            // Add "open panel" button
+            val openPanelBtn = MaterialButton(themedContext, null, com.google.android.material.R.attr.materialButtonOutlinedButtonStyle).apply {
+                text = "مدیریت وظایف"
+                textSize = 11f
+                isAllCaps = false
+                cornerRadius = 16.dp()
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, 42.dp()).apply { bottomMargin = 8.dp() }
+                setIconResource(android.R.drawable.ic_menu_preferences)
+            }
+            openPanelBtn.setOnClickListener { togglePanel() }
+            quickContainer.addView(openPanelBtn)
         }
 
+        // Use wrapper to avoid recursion
+        lateinit var refreshAllWrapper: ()->Unit
         fun refreshAll() {
             val tasks = TaskRepository.load(this)
             val isRec = AutoClickAccessibilityService.isRecording && AutoClickAccessibilityService.currentTaskId == selectedTaskId
             txtStatus.text = if (isRec) "● در حال ضبط — روی اپ شناور کلیک کن" else "آماده • ${tasks.size} وظیفه"
             txtStatus.setTextColor(ContextCompat.getColor(this, if(isRec) android.R.color.holo_red_dark else android.R.color.darker_gray))
             btnRec.text = if (isRec) "■ توقف ضبط" else "● شروع ضبط"
-            // Use direct color int, not resource ID
             btnRec.setBackgroundColor(if(isRec) 0xFFB3261E.toInt() else 0xFF6750A4.toInt())
-            btnPlay.isEnabled = selectedTaskId != null && !isRec
-
+            // Find the full panel play button to disable during rec is handled via btnPlay
+            val btnPlayEnabled = selectedTaskId != null && !isRec
+            btnPlay.isEnabled = btnPlayEnabled
+            fabMain.backgroundTintList = android.content.res.ColorStateList.valueOf(if(isRec) 0xFFB3261E.toInt() else 0xFF6750A4.toInt())
             // Tasks list
             val adapterTasks = FloatingTaskAdapter(tasks, selectedTaskId,
                 onSelect = { t -> selectedTaskId = t.id; refreshAll() },
                 onPlay = { t -> playTask(t.id) },
-                onDelete = { t -> TaskRepository.delete(this, t.id); if(selectedTaskId==t.id) selectedTaskId = TaskRepository.load(this).firstOrNull()?.id; refreshAll() }
+                onDelete = { t -> TaskRepository.delete(this, t.id); if(selectedTaskId==t.id) selectedTaskId = TaskRepository.load(this).firstOrNull()?.id; refreshAll() },
+                onToggleQuick = { t -> t.isQuick = !t.isQuick; TaskRepository.upsert(this, t); refreshAll(); refreshQuickButtons() }
             )
             recyclerTasks.adapter = adapterTasks
             txtEmpty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
-
-            // Current task details
             val cur = selectedTaskId?.let { TaskRepository.get(this, it) }
             if (cur == null) {
                 txtCurrentName.text = "— وظیفه‌ای انتخاب نشده"
@@ -155,10 +251,10 @@ class FloatingControlService : Service() {
                     onEdit = { idx -> showEditInputDialog(cur, idx) { refreshAll() } }
                 )
             }
-            // Toggle visibility is handled by toggle state
+            refreshQuickButtons()
         }
+        refreshAllWrapper = ::refreshAll
 
-        // Toggle
         toggle.check(R.id.btnTabTasks)
         sectionTasks.visibility = View.VISIBLE
         sectionCurrent.visibility = View.GONE
@@ -185,10 +281,9 @@ class FloatingControlService : Service() {
             val cur = selectedTaskId?.let { TaskRepository.get(this, it) } ?: return@setOnClickListener
             cur.actions.clear(); TaskRepository.upsert(this, cur); refreshAll()
         }
-
         btnRec.setOnClickListener {
             val svc = AutoClickAccessibilityService.instance
-            if (svc == null) { Toast.makeText(this,"سرویس دسترسی خاموش است — از تنظیمات فعال کن", Toast.LENGTH_LONG).show(); return@setOnClickListener }
+            if (svc == null) { Toast.makeText(this,"سرویس دسترسی خاموش است", Toast.LENGTH_LONG).show(); return@setOnClickListener }
             val curId = selectedTaskId ?: run { Toast.makeText(this,"اول یک وظیفه انتخاب کن", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
             if (AutoClickAccessibilityService.isRecording) {
                 AutoClickAccessibilityService.isRecording = false
@@ -197,40 +292,27 @@ class FloatingControlService : Service() {
             } else {
                 AutoClickAccessibilityService.currentTaskId = curId
                 AutoClickAccessibilityService.isRecording = true
-                Toast.makeText(this,"ضبط شروع شد — حالا روی اپ هدف (پنجره شناور) کلیک/اسکرول کن", Toast.LENGTH_LONG).show()
-                // auto switch to current tab
+                Toast.makeText(this,"ضبط شروع شد — روی اینپوت‌ها کلیک کن تا اعداد به ترتیب ست شوند", Toast.LENGTH_LONG).show()
+                // auto open current tab
                 toggle.check(R.id.btnTabCurrent)
+                if (!isPanelOpen) { panelContainer.visibility = View.VISIBLE; isPanelOpen = true }
             }
             refreshAll()
         }
-        btnPlay.setOnClickListener {
-            val curId = selectedTaskId ?: return@setOnClickListener
-            playTask(curId)
-        }
+        btnPlay.setOnClickListener { val curId = selectedTaskId ?: return@setOnClickListener; playTask(curId) }
         btnClose.setOnClickListener { stopSelf() }
         btnMin.setOnClickListener {
-            isMinimized = !isMinimized
-            val fullContent = floatingView!!.findViewById<View>(R.id.sectionTasks).parent as View
-            // simple minimize: hide sections, keep header and bottom controls
-            if (isMinimized) {
-                sectionTasks.visibility = View.GONE
-                sectionCurrent.visibility = View.GONE
-                floatingView!!.findViewById<View>(R.id.toggleGroup).visibility = View.GONE
-                (btnMin as ImageButton).setImageResource(android.R.drawable.arrow_up_float)
-            } else {
-                floatingView!!.findViewById<View>(R.id.toggleGroup).visibility = View.VISIBLE
-                if (toggle.checkedButtonId == R.id.btnTabTasks) sectionTasks.visibility = View.VISIBLE else sectionCurrent.visibility = View.VISIBLE
-                (btnMin as ImageButton).setImageResource(android.R.drawable.arrow_down_float)
-            }
-            // update window size
-            params.width = if(isMinimized) 360.dp() else 360.dp()
-            windowManager?.updateViewLayout(floatingView, params)
+            panelContainer.visibility = View.GONE
+            isPanelOpen = false
+            quickContainer.visibility = View.GONE
+            isMenuOpen = false
+            fabMain.animate().rotation(0f).start()
         }
-
-        // Listen for recorded actions
         AutoClickAccessibilityService.listeners.add { refreshAll() }
-
         refreshAll()
+        // Initially show only FAB
+        panelContainer.visibility = View.GONE
+        quickContainer.visibility = View.GONE
         windowManager?.addView(floatingView, params)
     }
 
@@ -239,9 +321,7 @@ class FloatingControlService : Service() {
         if (svc == null) { Toast.makeText(this,"سرویس دسترسی فعال نیست", Toast.LENGTH_SHORT).show(); return }
         if (AutoClickAccessibilityService.isRecording) { Toast.makeText(this,"اول ضبط را متوقف کن", Toast.LENGTH_SHORT).show(); return }
         Toast.makeText(this,"در حال اجرا...", Toast.LENGTH_SHORT).show()
-        svc.playTask(taskId) { ok ->
-            Toast.makeText(this, if(ok) "اجرا تمام شد ✓" else "خطا در اجرا", Toast.LENGTH_SHORT).show()
-        }
+        svc.playTask(taskId) { ok -> Toast.makeText(this, if(ok) "اجرا تمام شد ✓" else "خطا در اجرا", Toast.LENGTH_SHORT).show() }
     }
 
     private fun showCreateTaskDialog(onDone: ()->Unit) {
@@ -249,26 +329,16 @@ class FloatingControlService : Service() {
         val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_create_task, null)
         val editName = view.findViewById<EditText>(R.id.editName)
         val editPkg = view.findViewById<EditText>(R.id.editPackage)
-        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
-            .setTitle("وظیفه جدید")
-            .setView(view)
-            .setPositiveButton("ساخت", null)
-            .setNegativeButton("لغو", null)
-            .create()
-        // make it overlay
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick).setTitle("وظیفه جدید").setView(view).setPositiveButton("ساخت", null).setNegativeButton("لغو", null).create()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         dialog.show()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val name = editName.text.toString().trim()
             if (name.isEmpty()) { editName.error="نام لازم است"; return@setOnClickListener }
             val t = Task(name=name, targetPackage=editPkg.text.toString().trim())
-            TaskRepository.upsert(this, t)
-            selectedTaskId = t.id
-            dialog.dismiss()
-            onDone()
+            TaskRepository.upsert(this, t); selectedTaskId = t.id; dialog.dismiss(); onDone()
         }
     }
-
     private fun showCreateInputDialog(task: Task, onDone: ()->Unit) {
         val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
         val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_input_action, null)
@@ -277,12 +347,7 @@ class FloatingControlService : Service() {
         val options = mutableListOf("مقدار ثابت")
         task.params.forEachIndexed { i, p -> options.add("پارامتر ${i+1}: ${p.label.ifEmpty{"عدد ${i+1}"}} = ${p.value.ifEmpty{"خالی"}}") }
         spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
-        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
-            .setTitle("افزودن ورودی")
-            .setView(view)
-            .setPositiveButton("افزودن", null)
-            .setNegativeButton("لغو", null)
-            .create()
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick).setTitle("افزودن ورودی").setView(view).setPositiveButton("افزودن", null).setNegativeButton("لغو", null).create()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         dialog.show()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -293,7 +358,6 @@ class FloatingControlService : Service() {
             task.actions.add(a); TaskRepository.upsert(this, task); dialog.dismiss(); onDone()
         }
     }
-
     private fun showEditInputDialog(task: Task, idx: Int, onDone: ()->Unit) {
         val existing = task.actions[idx]
         val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
@@ -306,13 +370,7 @@ class FloatingControlService : Service() {
         editText.setText(existing.inputText ?: "")
         val sel = when { existing.paramIndex != null -> existing.paramIndex!!+1; existing.paramId != null -> { val pi=task.params.indexOfFirst{it.id==existing.paramId}; if(pi>=0) pi+1 else 0 }; else -> 0 }
         spinner.setSelection(sel.coerceIn(0, options.size-1))
-        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
-            .setTitle("ویرایش ورودی")
-            .setView(view)
-            .setPositiveButton("ذخیره", null)
-            .setNegativeButton("لغو", null)
-            .setNeutralButton("حذف") { _,_ -> task.actions.removeAt(idx); TaskRepository.upsert(this, task); onDone() }
-            .create()
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick).setTitle("ویرایش ورودی").setView(view).setPositiveButton("ذخیره", null).setNegativeButton("لغو", null).setNeutralButton("حذف") { _,_ -> task.actions.removeAt(idx); TaskRepository.upsert(this, task); onDone() }.create()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         dialog.show()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -322,7 +380,6 @@ class FloatingControlService : Service() {
             TaskRepository.upsert(this, task); dialog.dismiss(); onDone()
         }
     }
-
     private fun startForegroundNotification() {
         val channelId = "floating"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -330,30 +387,19 @@ class FloatingControlService : Service() {
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
         }
         val pending = PendingIntent.getActivity(this,0, Intent(this, com.autoclick.replay.ui.MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val notif = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle("پنل شناور فعال")
-            .setContentText("برای مدیریت وظایف ضربه بزن")
-            .setContentIntent(pending).setOngoing(true).build()
+        val notif = NotificationCompat.Builder(this, channelId).setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("پنل شناور فعال").setContentText("برای مدیریت وظایف ضربه بزن").setContentIntent(pending).setOngoing(true).build()
         startForeground(1, notif)
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        floatingView?.let { windowManager?.removeView(it) }
-        floatingView = null
-    }
-
+    override fun onDestroy() { super.onDestroy(); floatingView?.let { windowManager?.removeView(it) }; floatingView = null }
     private fun Int.dp(): Int = (this * resources.displayMetrics.density).toInt()
 }
-
-// Adapters for floating panel
 class FloatingTaskAdapter(
     private val tasks: List<Task>,
     private val selectedId: String?,
     private val onSelect: (Task)->Unit,
     private val onPlay: (Task)->Unit,
-    private val onDelete: (Task)->Unit
+    private val onDelete: (Task)->Unit,
+    private val onToggleQuick: (Task)->Unit
 ): RecyclerView.Adapter<FloatingTaskAdapter.VH>() {
     class VH(val view: View): RecyclerView.ViewHolder(view) {
         val txtName: TextView = view.findViewById(R.id.txtName)
@@ -361,28 +407,31 @@ class FloatingTaskAdapter(
         val txtCount: TextView = view.findViewById(R.id.txtCount)
         val btnPlay: View = view.findViewById(R.id.btnPlay)
         val btnDelete: View = view.findViewById(R.id.btnDelete)
+        var btnQuick: View? = null
         val card: View = view
     }
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_task, parent, false)
-        return VH(v)
+        val vh = VH(v)
+        // Try to find star button if exists, else create
+        vh.btnQuick = v.findViewById(R.id.btnQuick)
+        return vh
     }
     override fun onBindViewHolder(h: VH, pos: Int) {
         val t = tasks[pos]
         h.txtName.text = t.name
         h.txtPkg.text = if (t.targetPackage.isEmpty()) "همه اپ‌ها" else t.targetPackage
         h.txtCount.text = "${t.actions.size} مرحله • ${t.params.size} پارامتر"
-        h.card.isSelected = t.id == selectedId
         h.card.setOnClickListener { onSelect(t) }
         h.btnPlay.setOnClickListener { onPlay(t) }
         h.btnDelete.setOnClickListener { onDelete(t) }
-        // highlight selected
+        h.btnQuick?.setOnClickListener { onToggleQuick(t) }
+        // Update star icon
+        (h.btnQuick as? TextView)?.text = if(t.isQuick) "★" else "☆"
         h.card.alpha = if (t.id == selectedId) 1f else 0.9f
-        if (t.id == selectedId) h.card.setBackgroundResource(R.drawable.bg_chip)
     }
     override fun getItemCount() = tasks.size
 }
-
 class FloatingParamAdapter(
     private val list: MutableList<TaskParam>,
     private val onChange: ()->Unit,
@@ -401,7 +450,6 @@ class FloatingParamAdapter(
     }
     override fun getItemCount() = list.size
 }
-
 class FloatingActionAdapter(
     private val list: List<Action>,
     private val task: Task,

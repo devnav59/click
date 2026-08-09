@@ -6,9 +6,14 @@
     android:layout_margin="6dp"
     app:cardCornerRadius="16dp">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-        <TextView android:id="@+id/txtName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="16sp"/>
-        <TextView android:id="@+id/txtPkg" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="#666"/>
-        <TextView android:id="@+id/txtCount" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:id="@+id/txtName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="16sp"/>
+                <TextView android:id="@+id/txtPkg" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="#666"/>
+                <TextView android:id="@+id/txtCount" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp"/>
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnQuick" android:layout_width="48dp" android:layout_height="48dp" android:text="☆" android:textSize="18sp" style="@style/Widget.Material3.Button.TextButton" app:cornerRadius="12dp"/>
+        </LinearLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
             <com.google.android.material.button.MaterialButton android:id="@+id/btnOpen" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="جزئیات" style="@style/Widget.Material3.Button.TextButton"/>
             <com.google.android.material.button.MaterialButton android:id="@+id/btnPlay" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/play_task"/>

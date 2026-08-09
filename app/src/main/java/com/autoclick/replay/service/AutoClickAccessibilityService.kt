@@ -80,7 +80,25 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val winRect = getWindowRectForSource(source) ?: getCurrentWindowRect(event.packageName.toString())
         val relX = ((cx - winRect.left).toFloat() / winRect.width().coerceAtLeast(1)).coerceIn(0f,1f)
         val relY = ((cy - winRect.top).toFloat() / winRect.height().coerceAtLeast(1)).coerceIn(0f,1f)
-        val action = Action(type = ActionType.CLICK, relX = relX, relY = relY, windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(), packageName = event.packageName.toString(), className = event.className?.toString() ?: "", viewId = source.viewIdResourceName, text = source.text?.toString() ?: event.text?.joinToString(), delayMs = 350)
+        val classNameStr = (event.className?.toString() ?: source.className?.toString() ?: "")
+        val isEditText = classNameStr.contains("EditText", ignoreCase = true)
+        if (isEditText) {
+            val task = currentTaskId?.let { TaskRepository.get(this, it) }
+            if (task != null && task.params.isNotEmpty()) {
+                val nextIdx = task.actions.count { it.type == ActionType.INPUT_TEXT } % task.params.size
+                val param = task.params[nextIdx]
+                val action = Action(
+                    type = ActionType.INPUT_TEXT,
+                    relX = relX, relY = relY,
+                    windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(),
+                    packageName = event.packageName.toString(), className = classNameStr, viewId = source.viewIdResourceName,
+                    inputText = param.value, paramId = param.id, paramIndex = nextIdx, delayMs = 600
+                )
+                addAction(action); lastRecordTime = System.currentTimeMillis()
+                return
+            }
+        }
+        val action = Action(type = ActionType.CLICK, relX = relX, relY = relY, windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(), packageName = event.packageName.toString(), className = classNameStr, viewId = source.viewIdResourceName, text = source.text?.toString() ?: event.text?.joinToString(), delayMs = 350)
         addAction(action); lastRecordTime = System.currentTimeMillis()
     }
 
