@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.AutoClick" parent="Theme.Material3.DayNight">
+    <style name="Theme.AutoClick" parent="Theme.AppCompat.Light">
         <item name="colorPrimary">#6750A4</item>
     </style>
 </resources>
