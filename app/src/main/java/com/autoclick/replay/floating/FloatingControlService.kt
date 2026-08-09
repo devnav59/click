@@ -40,8 +40,10 @@ class FloatingControlService : Service() {
         if (floatingView != null) return
         startForegroundNotification()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val inflater = LayoutInflater.from(this)
-        floatingView = inflater.inflate(R.layout.view_floating_full, null)
+        // Use Material theme for inflation — Service context has no theme, so wrap it
+        val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
+        val inflater = LayoutInflater.from(themedContext)
+        floatingView = inflater.cloneInContext(themedContext).inflate(R.layout.view_floating_full, null)
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
         val params = WindowManager.LayoutParams(
@@ -232,10 +234,11 @@ class FloatingControlService : Service() {
     }
 
     private fun showCreateTaskDialog(onDone: ()->Unit) {
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_create_task, null)
+        val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_create_task, null)
         val editName = view.findViewById<EditText>(R.id.editName)
         val editPkg = view.findViewById<EditText>(R.id.editPackage)
-        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog)
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
             .setTitle("وظیفه جدید")
             .setView(view)
             .setPositiveButton("ساخت", null)
@@ -256,13 +259,14 @@ class FloatingControlService : Service() {
     }
 
     private fun showCreateInputDialog(task: Task, onDone: ()->Unit) {
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_input_action, null)
+        val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_input_action, null)
         val editText = view.findViewById<EditText>(R.id.editInputText)
         val spinner = view.findViewById<Spinner>(R.id.spinnerParam)
         val options = mutableListOf("مقدار ثابت")
         task.params.forEachIndexed { i, p -> options.add("پارامتر ${i+1}: ${p.label.ifEmpty{"عدد ${i+1}"}} = ${p.value.ifEmpty{"خالی"}}") }
         spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
-        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog)
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
             .setTitle("افزودن ورودی")
             .setView(view)
             .setPositiveButton("افزودن", null)
@@ -281,7 +285,8 @@ class FloatingControlService : Service() {
 
     private fun showEditInputDialog(task: Task, idx: Int, onDone: ()->Unit) {
         val existing = task.actions[idx]
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_input_action, null)
+        val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_input_action, null)
         val editText = view.findViewById<EditText>(R.id.editInputText)
         val spinner = view.findViewById<Spinner>(R.id.spinnerParam)
         val options = mutableListOf("مقدار ثابت")
@@ -290,7 +295,7 @@ class FloatingControlService : Service() {
         editText.setText(existing.inputText ?: "")
         val sel = when { existing.paramIndex != null -> existing.paramIndex!!+1; existing.paramId != null -> { val pi=task.params.indexOfFirst{it.id==existing.paramId}; if(pi>=0) pi+1 else 0 }; else -> 0 }
         spinner.setSelection(sel.coerceIn(0, options.size-1))
-        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog)
+        val dialog = android.app.AlertDialog.Builder(themedContext, R.style.Theme_AutoClick)
             .setTitle("ویرایش ورودی")
             .setView(view)
             .setPositiveButton("ذخیره", null)
