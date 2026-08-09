@@ -95,6 +95,17 @@ class FloatingControlService : Service() {
                         gravity = android.view.Gravity.CENTER
                     }
                     quickContainer.addView(hint)
+                    // Always show management button even when empty
+                    val openPanelBtnEmpty = MaterialButton(themedContext, null, com.google.android.material.R.attr.materialButtonStyle).apply {
+                        text = "مدیریت وظایف (ایجاد/ویرایش)"
+                        textSize = 11f
+                        isAllCaps = false
+                        cornerRadius = 16.dp()
+                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, 42.dp()).apply { topMargin = 8.dp() }
+                        setIconResource(android.R.drawable.ic_menu_preferences)
+                    }
+                    openPanelBtnEmpty.setOnClickListener { togglePanel() }
+                    quickContainer.addView(openPanelBtnEmpty)
                 }
                 return
             }
@@ -141,6 +152,12 @@ class FloatingControlService : Service() {
         }
 
         fun toggleMenu() {
+            // If no quick tasks, directly open full panel for create/edit
+            val hasQuick = TaskRepository.load(this).any { it.isQuick }
+            if (!hasQuick) {
+                togglePanel()
+                return
+            }
             isMenuOpen = !isMenuOpen
             quickContainer.visibility = if (isMenuOpen) View.VISIBLE else View.GONE
             // Animate fab
@@ -155,17 +172,34 @@ class FloatingControlService : Service() {
 
         fabMain.setOnTouchListener { _, event ->
             when(event.action){
-                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
+                MotionEvent.ACTION_DOWN -> {
+                    initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false
+                    // Long press (600ms) directly opens full panel
+                    val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                    val runnable = Runnable { togglePanel() }
+                    fabMain.setTag(R.id.fabMain, runnable to handler)
+                    handler.postDelayed(runnable, 600)
+                    true
+                }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - initialTouchX).toInt(); val dy = (event.rawY - initialTouchY).toInt()
-                    if (Math.abs(dx)>10 || Math.abs(dy)>10) isDragging=true
+                    if (Math.abs(dx)>10 || Math.abs(dy)>10) {
+                        isDragging=true
+                        // cancel long press
+                        (fabMain.getTag(R.id.fabMain) as? Pair<Runnable, android.os.Handler>)?.let { it.second.removeCallbacks(it.first) }
+                    }
                     // For BOTTOM|END gravity, x increases to left, y to top
                     params.x = initialX - dx; params.y = initialY - dy
                     windowManager?.updateViewLayout(floatingView, params); true
                 }
                 MotionEvent.ACTION_UP -> {
+                    (fabMain.getTag(R.id.fabMain) as? Pair<Runnable, android.os.Handler>)?.let { it.second.removeCallbacks(it.first) }
                     if (!isDragging) { toggleMenu() }
                     isDragging
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    (fabMain.getTag(R.id.fabMain) as? Pair<Runnable, android.os.Handler>)?.let { it.second.removeCallbacks(it.first) }
+                    false
                 }
                 else -> false
             }
