@@ -40,11 +40,10 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile != null) signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            // use debug signing only if keystore exists, otherwise unsigned
             if (signingConfigs.debug.storeFile != null) signingConfig signingConfigs.debug
         }
     }
