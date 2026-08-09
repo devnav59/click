@@ -28,22 +28,30 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var lastWindowBounds: Rect? = null
 
-    override fun onServiceConnected() { super.onServiceConnected(); instance = this }
-    override fun onDestroy() { super.onDestroy(); if (instance == this) instance = null; scope.cancel() }
+    override fun onServiceConnected() {
+        try {
+            super.onServiceConnected()
+            instance = this
+            // Keep service alive, avoid MIUI "malfunctioning" by not doing heavy work here
+        } catch (e: Exception) { instance = this }
+    }
+    override fun onDestroy() { super.onDestroy(); if (instance == this) instance = null; try { scope.cancel() } catch (_: Exception){} }
     override fun onInterrupt() {}
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
-        if (!isRecording || currentTaskId == null) return
-        val pkg = event.packageName?.toString() ?: return
-        if (pkg == packageName) return
-        when (event.eventType) {
-            AccessibilityEvent.TYPE_VIEW_CLICKED -> handleClick(event)
-            AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> handleLongClick(event)
-            AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScroll(event)
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> updateWindowBounds()
-            else -> {}
-        }
+        try {
+            if (event == null) return
+            if (!isRecording || currentTaskId == null) return
+            val pkg = event.packageName?.toString() ?: return
+            if (pkg == packageName) return
+            when (event.eventType) {
+                AccessibilityEvent.TYPE_VIEW_CLICKED -> handleClick(event)
+                AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> handleLongClick(event)
+                AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScroll(event)
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> updateWindowBounds()
+                else -> {}
+            }
+        } catch (_: Exception) { /* swallow to avoid MIUI malfunction */ }
     }
 
     private fun updateWindowBounds() {

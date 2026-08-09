@@ -38,12 +38,22 @@ class FloatingControlService : Service() {
 
     private fun showFloating() {
         if (floatingView != null) return
-        startForegroundNotification()
+        try {
+            startForegroundNotification()
+        } catch (_: Exception) {}
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         // Use Material theme for inflation — Service context has no theme, so wrap it
         val themedContext = androidx.appcompat.view.ContextThemeWrapper(this, R.style.Theme_AutoClick)
         val inflater = LayoutInflater.from(themedContext)
-        floatingView = inflater.cloneInContext(themedContext).inflate(R.layout.view_floating_full, null)
+        try {
+            floatingView = inflater.cloneInContext(themedContext).inflate(R.layout.view_floating_full, null)
+        } catch (e: Exception) {
+            // Fallback to simple view if Material inflation fails
+            Toast.makeText(this, "خطا در نمایش پنل: ${e.message}", Toast.LENGTH_LONG).show()
+            try {
+                floatingView = LayoutInflater.from(this).inflate(R.layout.view_floating, null)
+            } catch (_: Exception) { return }
+        }
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
         val params = WindowManager.LayoutParams(
@@ -111,7 +121,8 @@ class FloatingControlService : Service() {
             txtStatus.text = if (isRec) "● در حال ضبط — روی اپ شناور کلیک کن" else "آماده • ${tasks.size} وظیفه"
             txtStatus.setTextColor(ContextCompat.getColor(this, if(isRec) android.R.color.holo_red_dark else android.R.color.darker_gray))
             btnRec.text = if (isRec) "■ توقف ضبط" else "● شروع ضبط"
-            btnRec.setBackgroundColor(ContextCompat.getColor(this, if(isRec) 0xFFB3261E.toInt() else 0xFF6750A4.toInt()))
+            // Use direct color int, not resource ID
+            btnRec.setBackgroundColor(if(isRec) 0xFFB3261E.toInt() else 0xFF6750A4.toInt())
             btnPlay.isEnabled = selectedTaskId != null && !isRec
 
             // Tasks list
