@@ -69,6 +69,9 @@ class FloatingControlService : Service() {
         // Drag via FAB
         var initialX = 0; var initialY = 0; var initialTouchX = 0f; var initialTouchY = 0f
         var isDragging = false
+        // Forward declarations to avoid unresolved references
+        var toggleMenuRef: (() -> Unit)? = null
+        var refreshQuickButtonsRef: (() -> Unit)? = null
         fabMain.setOnTouchListener { _, event ->
             when(event.action){
                 MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
@@ -80,7 +83,7 @@ class FloatingControlService : Service() {
                     windowManager?.updateViewLayout(floatingView, params); true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) { toggleMenu() }
+                    if (!isDragging) { toggleMenuRef?.invoke() }
                     isDragging
                 }
                 else -> false
@@ -100,55 +103,7 @@ class FloatingControlService : Service() {
             }
         }
 
-        fun toggleMenu() {
-            isMenuOpen = !isMenuOpen
-            quickContainer.visibility = if (isMenuOpen) View.VISIBLE else View.GONE
-            // Animate fab
-            fabMain.animate().rotation(if(isMenuOpen) 45f else 0f).setDuration(200).start()
-            if (!isMenuOpen) {
-                // also close panel when closing menu
-                panelContainer.visibility = View.GONE
-                isPanelOpen = false
-            }
-            refreshQuickButtons()
-        }
-        fun togglePanel() {
-            isPanelOpen = !isPanelOpen
-            panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
-            if (isPanelOpen) {
-                quickContainer.visibility = View.GONE
-                isMenuOpen = false
-                fabMain.animate().rotation(0f).start()
-            }
-        }
-
-        // Panel inner views (find via floatingView)
-        val txtStatus = floatingView!!.findViewById<TextView>(R.id.txtFloatingStatusFull)
-        val btnRec = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingRecFull)
-        val btnPlay = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingPlayFull)
-        val btnClose = floatingView!!.findViewById<View>(R.id.btnFloatingCloseFull)
-        val btnMin = floatingView!!.findViewById<View>(R.id.btnFloatingMinimize)
-        val toggle = floatingView!!.findViewById<MaterialButtonToggleGroup>(R.id.toggleGroup)
-        val sectionTasks = floatingView!!.findViewById<View>(R.id.sectionTasks)
-        val sectionCurrent = floatingView!!.findViewById<View>(R.id.sectionCurrent)
-        val recyclerTasks = floatingView!!.findViewById<RecyclerView>(R.id.recyclerTasksFloat)
-        val recyclerParams = floatingView!!.findViewById<RecyclerView>(R.id.recyclerParamsFloat)
-        val recyclerActions = floatingView!!.findViewById<RecyclerView>(R.id.recyclerActionsFloat)
-        val txtEmpty = floatingView!!.findViewById<View>(R.id.txtEmptyFloat)
-        val txtCurrentName = floatingView!!.findViewById<TextView>(R.id.txtCurrentTaskName)
-        val txtCurrentCount = floatingView!!.findViewById<TextView>(R.id.txtCurrentCount)
-        val txtCurrentPkg = floatingView!!.findViewById<TextView>(R.id.txtCurrentPkg)
-        val btnCreate = floatingView!!.findViewById<View>(R.id.btnCreateTaskFloat)
-        val btnAddParam = floatingView!!.findViewById<View>(R.id.btnAddParamFloat)
-        val btnAddInput = floatingView!!.findViewById<View>(R.id.btnAddInputFloat)
-        val btnClear = floatingView!!.findViewById<View>(R.id.btnClearFloat)
-
-        recyclerTasks.layoutManager = LinearLayoutManager(themedContext)
-        recyclerParams.layoutManager = LinearLayoutManager(themedContext)
-        recyclerActions.layoutManager = LinearLayoutManager(themedContext)
-
-        if (selectedTaskId == null) selectedTaskId = TaskRepository.load(this).firstOrNull()?.id
-
+        lateinit var refreshAllWrapper: ()->Unit
         fun refreshQuickButtons() {
             quickContainer.removeAllViews()
             val tasks = TaskRepository.load(this).filter { it.isQuick }
@@ -197,7 +152,7 @@ class FloatingControlService : Service() {
                 quickContainer.addView(btn)
             }
             // Add "open panel" button
-            val openPanelBtn = MaterialButton(themedContext, null, com.google.android.material.R.attr.materialButtonOutlinedButtonStyle).apply {
+            val openPanelBtn = MaterialButton(themedContext, null, com.google.android.material.R.attr.materialButtonStyle).apply {
                 text = "مدیریت وظایف"
                 textSize = 11f
                 isAllCaps = false
@@ -209,8 +164,64 @@ class FloatingControlService : Service() {
             quickContainer.addView(openPanelBtn)
         }
 
+        fun toggleMenuImpl() {
+            isMenuOpen = !isMenuOpen
+            quickContainer.visibility = if (isMenuOpen) View.VISIBLE else View.GONE
+            // Animate fab
+            fabMain.animate().rotation(if(isMenuOpen) 45f else 0f).setDuration(200).start()
+            if (!isMenuOpen) {
+                // also close panel when closing menu
+                panelContainer.visibility = View.GONE
+                isPanelOpen = false
+            }
+            refreshQuickButtons()
+        }
+        fun togglePanelImpl() {
+            isPanelOpen = !isPanelOpen
+            panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
+            if (isPanelOpen) {
+                quickContainer.visibility = View.GONE
+                isMenuOpen = false
+                fabMain.animate().rotation(0f).start()
+            }
+        }
+
+        // Assign forward refs
+        toggleMenuRef = ::toggleMenuImpl
+        refreshQuickButtonsRef = { refreshQuickButtons() }
+        // Alias for old name
+        fun toggleMenu() = toggleMenuImpl()
+        fun togglePanel() = togglePanelImpl()
+        // Panel inner views (find via floatingView)
+        val txtStatus = floatingView!!.findViewById<TextView>(R.id.txtFloatingStatusFull)
+        val btnRec = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingRecFull)
+        val btnPlay = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingPlayFull)
+        val btnClose = floatingView!!.findViewById<View>(R.id.btnFloatingCloseFull)
+        val btnMin = floatingView!!.findViewById<View>(R.id.btnFloatingMinimize)
+        val toggle = floatingView!!.findViewById<MaterialButtonToggleGroup>(R.id.toggleGroup)
+        val sectionTasks = floatingView!!.findViewById<View>(R.id.sectionTasks)
+        val sectionCurrent = floatingView!!.findViewById<View>(R.id.sectionCurrent)
+        val recyclerTasks = floatingView!!.findViewById<RecyclerView>(R.id.recyclerTasksFloat)
+        val recyclerParams = floatingView!!.findViewById<RecyclerView>(R.id.recyclerParamsFloat)
+        val recyclerActions = floatingView!!.findViewById<RecyclerView>(R.id.recyclerActionsFloat)
+        val txtEmpty = floatingView!!.findViewById<View>(R.id.txtEmptyFloat)
+        val txtCurrentName = floatingView!!.findViewById<TextView>(R.id.txtCurrentTaskName)
+        val txtCurrentCount = floatingView!!.findViewById<TextView>(R.id.txtCurrentCount)
+        val txtCurrentPkg = floatingView!!.findViewById<TextView>(R.id.txtCurrentPkg)
+        val btnCreate = floatingView!!.findViewById<View>(R.id.btnCreateTaskFloat)
+        val btnAddParam = floatingView!!.findViewById<View>(R.id.btnAddParamFloat)
+        val btnAddInput = floatingView!!.findViewById<View>(R.id.btnAddInputFloat)
+        val btnClear = floatingView!!.findViewById<View>(R.id.btnClearFloat)
+
+        recyclerTasks.layoutManager = LinearLayoutManager(themedContext)
+        recyclerParams.layoutManager = LinearLayoutManager(themedContext)
+        recyclerActions.layoutManager = LinearLayoutManager(themedContext)
+
+        if (selectedTaskId == null) selectedTaskId = TaskRepository.load(this).firstOrNull()?.id
+
+
+
         // Use wrapper to avoid recursion
-        lateinit var refreshAllWrapper: ()->Unit
         fun refreshAll() {
             val tasks = TaskRepository.load(this)
             val isRec = AutoClickAccessibilityService.isRecording && AutoClickAccessibilityService.currentTaskId == selectedTaskId
