@@ -10,7 +10,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.autoclick.replay.R
 import com.autoclick.replay.databinding.ActivityTaskDetailBinding
@@ -192,8 +191,8 @@ class ParamAdapter(
         h.b.editLabel.setText(p.label)
         h.b.editValue.setText(p.value)
         h.b.txtHint.text = "در اقدام‌ها با {{p${pos}}} قابل استفاده است"
-        h.b.editLabel.doAfterTextChanged { p.label = it.toString(); onChange() }
-        h.b.editValue.doAfterTextChanged { p.value = it.toString(); onChange() }
+        h.b.editLabel.addTextChangedListener(object: android.text.TextWatcher{ override fun beforeTextChanged(s: CharSequence?,a:Int,b:Int,c:Int){} override fun onTextChanged(s: CharSequence?,a:Int,b:Int,c:Int){} override fun afterTextChanged(s: android.text.Editable?){ p.label = s.toString(); onChange() } })
+        h.b.editValue.addTextChangedListener(object: android.text.TextWatcher{ override fun beforeTextChanged(s: CharSequence?,a:Int,b:Int,c:Int){} override fun onTextChanged(s: CharSequence?,a:Int,b:Int,c:Int){} override fun afterTextChanged(s: android.text.Editable?){ p.value = s.toString(); onChange() } })
         h.b.btnDeleteParam.setOnClickListener { onDelete(pos) }
     }
     override fun getItemCount() = list.size
