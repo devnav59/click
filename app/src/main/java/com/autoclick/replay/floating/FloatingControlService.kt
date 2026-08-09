@@ -503,15 +503,38 @@ class FloatingActionAdapter(
     override fun onBindViewHolder(h: VH, pos: Int) {
         val a = list[pos]
         val isInput = a.type==ActionType.INPUT_TEXT
-        val paramDesc = if(isInput){
-            val v = a.paramIndex?.let{ if(it in task.params.indices) task.params[it].value else "-" } ?: a.inputText ?: "-"
-            if(a.paramIndex!=null) "→ پارامتر ${a.paramIndex!!+1} = $v" else "ثابت: $v"
-        } else ""
-        h.b.txtType.text = "${pos+1}. ${a.type} $paramDesc"
-        h.b.txtDetail.text = if(isInput) "متن: ${a.inputText}" else "viewId=${a.viewId ?: "-"}"
-        h.b.txtCoords.text = "rel=%.2f,%.2f • %dms".format(a.relX,a.relY,a.delayMs)
-        h.b.root.setOnClickListener { if(isInput) onEdit(pos) else {} }
-        h.b.root.setOnLongClickListener { onDelete(pos); true }
+        if (isInput) {
+            val hasParam = a.paramIndex != null && a.paramIndex!! in task.params.indices
+            if (!hasParam) {
+                h.b.txtType.text = "⚠ ورودی ${pos+1} — بدون عدد (تپ برای انتخاب)"
+                val v = a.inputText?.ifEmpty { "خالی" } ?: "خالی"
+                h.b.txtDetail.text = "مقدار فعلی: $v — تپ کنید و یک عدد از لیست بالا انتخاب کنید"
+                h.b.txtCoords.text = "تپ برای انتخاب عدد • نگه‌دارید برای حذف"
+                h.b.root.setCardBackgroundColor(0xFFFFF8E1.toInt())
+            } else {
+                val v = task.params[a.paramIndex!!].value
+                h.b.txtType.text = "✓ ورودی ${pos+1} → عدد ${a.paramIndex!!+1} = $v"
+                h.b.txtDetail.text = "برای تغییر عدد تپ کنید — مقدار: $v"
+                h.b.txtCoords.text = "نسبی %.2f,%.2f • %dms".format(a.relX, a.relY, a.delayMs)
+                h.b.root.setCardBackgroundColor(0xFFE8F5E9.toInt())
+            }
+            h.b.root.setOnClickListener { onEdit(pos) }
+            h.b.root.setOnLongClickListener { onDelete(pos); true }
+        } else {
+            val typeStr = when(a.type) {
+                ActionType.CLICK -> "کلیک"
+                ActionType.SCROLL -> "اسکرول"
+                ActionType.SWIPE -> "سوایپ"
+                ActionType.LONG_CLICK -> "لانگ‌کلیک"
+                else -> a.type.toString()
+            }
+            h.b.txtType.text = "${pos+1}. $typeStr"
+            h.b.txtDetail.text = if(a.viewId != null) "viewId=${a.viewId}" else "مختصات نسبی"
+            h.b.txtCoords.text = "rel=%.2f,%.2f → %.2f,%.2f • %dms".format(a.relX, a.relY, a.relEndX ?: a.relX, a.relEndY ?: a.relY, a.delayMs)
+            h.b.root.setCardBackgroundColor(0xFFFFFFFF.toInt())
+            h.b.root.setOnClickListener { }
+            h.b.root.setOnLongClickListener { onDelete(pos); true }
+        }
     }
     override fun getItemCount() = list.size
 }

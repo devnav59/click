@@ -231,7 +231,23 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Params -->
+            <!-- Params - Step 1 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="۱. اعداد ورودی را اینجا تعریف کن (اعشاری)"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="#6750A4"
+                android:layout_marginBottom="2dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="مثلاً ۱۲.۵۰ ، ۳.۱۴ ، ۹۹.۹ — هنگام ضبط به ترتیب به اینپوت‌ها وصل می‌شوند"
+                android:textSize="10sp"
+                android:textColor="#666"
+                android:layout_marginBottom="4dp"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -243,75 +259,99 @@
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="پارامترهای اعشاری"
+                    android:text="لیست اعداد"
                     android:textStyle="bold"
-                    android:textSize="12sp"/>
+                    android:textSize="11sp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddParamFloat"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
                     android:text="+ عدد"
-                    android:textSize="11sp"/>
+                    android:textSize="11sp"
+                    app:cornerRadius="12dp"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerParamsFloat"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:maxHeight="110dp"/>
+                android:maxHeight="120dp"/>
 
-            <!-- Actions -->
+            <!-- Actions - Step 2 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="۲. مراحل ضبط‌شده"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="#6750A4"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="2dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="روی هر اینپوت در اپ هدف که کلیک کنی، یک «ورودی» ساخته می‌شود. بعد اینجا تپ کن و عددش را انتخاب کن"
+                android:textSize="10sp"
+                android:textColor="#666"
+                android:layout_marginBottom="4dp"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="8dp"
                 android:layout_marginBottom="4dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="مراحل ضبط‌شده"
-                    android:textStyle="bold"
-                    android:textSize="12sp"/>
+                    android:text="ورودی‌ها و کلیک‌ها"
+                    android:textSize="11sp"
+                    android:textStyle="bold"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddInputFloat"
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
-                    android:text="+ ورودی"
-                    android:textSize="11sp"/>
+                    android:text="+ دستی"
+                    android:textSize="10sp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnClearFloat"
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
-                    android:text="پاک"
-                    android:textSize="11sp"/>
+                    android:text="پاک همه"
+                    android:textSize="10sp"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerActionsFloat"
                 android:layout_width="match_parent"
-                android:layout_height="140dp"
+                android:layout_height="160dp"
                 android:clipToPadding="false"/>
 
             <!-- Tip -->
-            <TextView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="نکته: اپ هدف را به صورت پنجره شناور (Freeform) باز کن تا همزمان پنل را ببینی. دکمه‌های ضبط ذخیره نمی‌شوند."
-                android:textSize="10sp"
-                android:textColor="#888"
-                android:background="#F3F0F7"
-                android:padding="8dp"
-                android:layout_marginTop="8dp"/>
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#E7E0EC"
+                app:strokeWidth="1dp"
+                android:layout_marginTop="8dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="💡 نکته: اسکرول با سوایپ دقیق ضبط می‌شود. دکمه‌های پنل در ضبط ذخیره نمی‌شوند."
+                    android:textSize="10sp"
+                    android:textColor="#49454F"
+                    android:padding="8dp"/>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
         <!-- Bottom controls -->

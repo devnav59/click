@@ -81,22 +81,31 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val relX = ((cx - winRect.left).toFloat() / winRect.width().coerceAtLeast(1)).coerceIn(0f,1f)
         val relY = ((cy - winRect.top).toFloat() / winRect.height().coerceAtLeast(1)).coerceIn(0f,1f)
         val classNameStr = (event.className?.toString() ?: source.className?.toString() ?: "")
-        val isEditText = classNameStr.contains("EditText", ignoreCase = true)
-        if (isEditText) {
+        val isEditText = classNameStr.contains("EditText", ignoreCase = true) || classNameStr.contains("AutoCompleteTextView", ignoreCase = true)
+        // Also check via source properties: try isEditable via reflection
+        var editable = isEditText
+        if (!editable) {
+            try {
+                val isEditableField = source.javaClass.getMethod("isEditable")
+                editable = isEditableField.invoke(source) as? Boolean ?: false
+            } catch (_: Exception) {}
+        }
+        if (editable) {
             val task = currentTaskId?.let { TaskRepository.get(this, it) }
-            if (task != null && task.params.isNotEmpty()) {
-                val nextIdx = task.actions.count { it.type == ActionType.INPUT_TEXT } % task.params.size
-                val param = task.params[nextIdx]
-                val action = Action(
-                    type = ActionType.INPUT_TEXT,
-                    relX = relX, relY = relY,
-                    windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(),
-                    packageName = event.packageName.toString(), className = classNameStr, viewId = source.viewIdResourceName,
-                    inputText = param.value, paramId = param.id, paramIndex = nextIdx, delayMs = 600
-                )
-                addAction(action); lastRecordTime = System.currentTimeMillis()
-                return
-            }
+            // Always create INPUT_TEXT for EditText, even if params empty — user can assign later
+            val nextIdx: Int? = if (task != null && task.params.isNotEmpty()) {
+                task.actions.count { it.type == ActionType.INPUT_TEXT } % task.params.size
+            } else null
+            val param = nextIdx?.let { task?.params?.getOrNull(it) }
+            val action = Action(
+                type = ActionType.INPUT_TEXT,
+                relX = relX, relY = relY,
+                windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(),
+                packageName = event.packageName.toString(), className = classNameStr, viewId = source.viewIdResourceName,
+                inputText = param?.value ?: "", paramId = param?.id, paramIndex = nextIdx, delayMs = 600
+            )
+            addAction(action); lastRecordTime = System.currentTimeMillis()
+            return
         }
         val action = Action(type = ActionType.CLICK, relX = relX, relY = relY, windowLeft = winRect.left, windowTop = winRect.top, windowWidth = winRect.width(), windowHeight = winRect.height(), packageName = event.packageName.toString(), className = classNameStr, viewId = source.viewIdResourceName, text = source.text?.toString() ?: event.text?.joinToString(), delayMs = 350)
         addAction(action); lastRecordTime = System.currentTimeMillis()
@@ -113,12 +122,44 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     private fun handleScroll(event: AccessibilityEvent) {
+        val now = System.currentTimeMillis()
+        if (now - lastRecordTime < 700) return
         val source = event.source ?: return
+        val bounds = Rect(); source.getBoundsInScreen(bounds)
+        // If bounds empty, use event source fallback
         val winRect = getWindowRectForSource(source) ?: getCurrentWindowRect(event.packageName.toString())
-        val fromX = 0.5f; val fromY = 0.7f; var relEndY = 0.3f
-        if (event.scrollDeltaY < 0) relEndY = 0.7f
-        addAction(Action(type=ActionType.SCROLL, relX=fromX, relY=fromY, relEndX=0.5f, relEndY=relEndY, windowLeft=winRect.left, windowTop=winRect.top, windowWidth=winRect.width(), windowHeight=winRect.height(), packageName=event.packageName.toString(), delayMs=500, durationMs=300))
-        lastRecordTime = System.currentTimeMillis()
+        // Start at center of scrolled view (accurate relative to window)
+        val startX: Float
+        val startY: Float
+        if (!bounds.isEmpty) {
+            startX = ((bounds.centerX() - winRect.left).toFloat() / winRect.width().coerceAtLeast(1)).coerceIn(0.05f, 0.95f)
+            startY = ((bounds.centerY() - winRect.top).toFloat() / winRect.height().coerceAtLeast(1)).coerceIn(0.05f, 0.95f)
+        } else {
+            startX = 0.5f; startY = 0.5f
+        }
+        var endX = startX
+        var endY = startY
+        val dx = event.scrollDeltaX
+        val dy = event.scrollDeltaY
+        val distance = 0.32f
+        if (dx != 0) {
+            endX = (startX + if (dx > 0) distance else -distance).coerceIn(0.05f, 0.95f)
+        } else {
+            // Vertical scroll: use fromIndex/toIndex if available, otherwise dy sign
+            var isScrollDown = true
+            if (event.fromIndex != -1 && event.toIndex != -1) {
+                isScrollDown = event.toIndex > event.fromIndex
+            } else if (dy != 0) {
+                isScrollDown = dy > 0
+            } else if (event.maxScrollY != 0 || event.maxScrollX != 0) {
+                // Fallback: assume swipe up to scroll down
+                isScrollDown = true
+            }
+            endY = if (isScrollDown) (startY - distance).coerceIn(0.05f, 0.95f) else (startY + distance).coerceIn(0.05f, 0.95f)
+        }
+        // Also handle that some devices send scroll events with itemCount
+        addAction(Action(type=ActionType.SCROLL, relX=startX, relY=startY, relEndX=endX, relEndY=endY, windowLeft=winRect.left, windowTop=winRect.top, windowWidth=winRect.width(), windowHeight=winRect.height(), packageName=event.packageName.toString(), className = event.className?.toString() ?: "", viewId = source.viewIdResourceName, delayMs=600, durationMs=380))
+        lastRecordTime = now
     }
 
     private fun getWindowRectForSource(source: AccessibilityNodeInfo): Rect? {
