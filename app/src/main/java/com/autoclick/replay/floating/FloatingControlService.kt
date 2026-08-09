@@ -69,9 +69,6 @@ class FloatingControlService : Service() {
         // Drag via FAB
         var initialX = 0; var initialY = 0; var initialTouchX = 0f; var initialTouchY = 0f
         var isDragging = false
-        // Forward declarations to avoid unresolved references
-        var toggleMenuRef: (() -> Unit)? = null
-        var refreshQuickButtonsRef: (() -> Unit)? = null
         fabMain.setOnTouchListener { _, event ->
             when(event.action){
                 MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
@@ -83,7 +80,7 @@ class FloatingControlService : Service() {
                     windowManager?.updateViewLayout(floatingView, params); true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) { toggleMenuRef?.invoke() }
+                    if (!isDragging) { toggleMenu() }
                     isDragging
                 }
                 else -> false
@@ -103,6 +100,18 @@ class FloatingControlService : Service() {
             }
         }
 
+
+
+
+        fun togglePanel() {
+            isPanelOpen = !isPanelOpen
+            panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
+            if (isPanelOpen) {
+                quickContainer.visibility = View.GONE
+                isMenuOpen = false
+                fabMain.animate().rotation(0f).start()
+            }
+        }
         lateinit var refreshAllWrapper: ()->Unit
         fun refreshQuickButtons() {
             quickContainer.removeAllViews()
@@ -164,7 +173,7 @@ class FloatingControlService : Service() {
             quickContainer.addView(openPanelBtn)
         }
 
-        fun toggleMenuImpl() {
+        fun toggleMenu() {
             isMenuOpen = !isMenuOpen
             quickContainer.visibility = if (isMenuOpen) View.VISIBLE else View.GONE
             // Animate fab
@@ -176,23 +185,9 @@ class FloatingControlService : Service() {
             }
             refreshQuickButtons()
         }
-        fun togglePanelImpl() {
-            isPanelOpen = !isPanelOpen
-            panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
-            if (isPanelOpen) {
-                quickContainer.visibility = View.GONE
-                isMenuOpen = false
-                fabMain.animate().rotation(0f).start()
-            }
-        }
 
-        // Assign forward refs
-        toggleMenuRef = ::toggleMenuImpl
-        refreshQuickButtonsRef = { refreshQuickButtons() }
-        // Alias for old name
-        fun toggleMenu() = toggleMenuImpl()
-        fun togglePanel() = togglePanelImpl()
-        // Panel inner views (find via floatingView)
+
+                // Panel inner views (find via floatingView)
         val txtStatus = floatingView!!.findViewById<TextView>(R.id.txtFloatingStatusFull)
         val btnRec = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingRecFull)
         val btnPlay = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingPlayFull)
