@@ -157,4 +157,18 @@ APP_ARGS=`save "$@"`
 # Collect all arguments for the java command, following the shell quoting and substitution rules
 eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
 
-exec "$JAVACMD" "$@"
+"$JAVACMD" "$@" 2>&1 | tee /tmp/gradle.log
+status=${PIPESTATUS[0]}
+echo "===GRADLE LOG START==="
+cat /tmp/gradle.log
+echo "===GRADLE LOG END==="
+# Emit as annotations for fetch via API (first 30 lines as errors)
+head -n 30 /tmp/gradle.log | while IFS= read -r line; do
+  esc=$(printf "%s" "$line" | tr -d "\n" | cut -c1-500)
+  echo "::error::$esc"
+done
+tail -n 100 /tmp/gradle.log | while IFS= read -r line; do
+  esc=$(printf "%s" "$line" | tr -d "\n" | cut -c1-500)
+  echo "::warning::$esc"
+done
+exit $status
