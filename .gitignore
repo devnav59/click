@@ -2,5 +2,5 @@
 build/
 app/build/
 local.properties
-*.keystore
-!.github/
+# keep generated keystores for CI reproducibility if user commits them, but ignore by default
+# *.keystore

@@ -22,8 +22,20 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="پارامترهای عددی (اعشاری)" android:textStyle="bold"/>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/btnAddParam" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="افزودن عدد" style="@style/Widget.Material3.Button.TonalButton"/>
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="مثلا ۳ عدد تعریف کن، سپس هر ورودی متن را به یکی وصل کن. هنگام اجرا به ترتیب جایگذاری می‌شود." android:textSize="11sp" android:textColor="#666"/>
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerParams" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
             <com.google.android.material.button.MaterialButton android:id="@+id/btnPlay" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/play_task"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnAddInput" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="افزودن ورودی" style="@style/Widget.Material3.Button.TonalButton"/>
             <com.google.android.material.button.MaterialButton android:id="@+id/btnClear" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="پاک کردن" style="@style/Widget.Material3.Button.OutlinedButton"/>
             <com.google.android.material.button.MaterialButton android:id="@+id/btnFloating" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="پنل شناور" style="@style/Widget.Material3.Button.OutlinedButton"/>
         </LinearLayout>

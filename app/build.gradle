@@ -18,14 +18,22 @@ android {
 
     signingConfigs {
         release {
-            // will be overridden by env if provided, otherwise use debug keystore generated in CI
-            storeFile file("${rootDir}/release.keystore")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "autoclick123"
-            keyAlias System.getenv("KEY_ALIAS") ?: "autoclick"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "autoclick123"
+            def ks = file("${rootDir}/release.keystore")
+            if (ks.exists()) {
+                storeFile ks
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "autoclick123"
+                keyAlias System.getenv("KEY_ALIAS") ?: "autoclick"
+                keyPassword System.getenv("KEY_PASSWORD") ?: "autoclick123"
+            }
         }
         debug {
-            storeFile file("${rootDir}/debug.keystore")
+            def ks = file("${rootDir}/debug.keystore")
+            if (ks.exists()) {
+                storeFile ks
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
         }
     }
 
@@ -36,7 +44,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            signingConfig signingConfigs.debug
+            // use debug signing only if keystore exists, otherwise unsigned
+            if (signingConfigs.debug.storeFile != null) signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -58,6 +67,5 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-service:2.7.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    // JSON without extra lib
     implementation 'com.google.code.gson:gson:2.10.1'
 }

@@ -2,9 +2,6 @@ package com.autoclick.replay.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
@@ -15,7 +12,8 @@ import com.autoclick.replay.model.Action
 import com.autoclick.replay.model.ActionType
 import com.autoclick.replay.util.TaskRepository
 import kotlinx.coroutines.*
-import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 class AutoClickAccessibilityService : AccessibilityService() {
 
@@ -23,7 +21,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         var instance: AutoClickAccessibilityService? = null
         var isRecording = false
         var currentTaskId: String? = null
-        // for debouncing
         private var lastRecordTime = 0L
         val listeners = mutableListOf<() -> Unit>()
     }
@@ -45,25 +42,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         if (!isRecording || currentTaskId == null) return
-        // Throttle
-        val now = System.currentTimeMillis()
-        if (now - lastRecordTime < 250) {
-            // allow scroll events more frequently? we throttle slightly
-        }
-
         val pkg = event.packageName?.toString() ?: return
-        // ignore our own package
         if (pkg == packageName) return
-
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_CLICKED -> handleClick(event)
             AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> handleLongClick(event)
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScroll(event)
-            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> { /* ignore to avoid noise */ }
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                // update window bounds cache
-                updateWindowBounds()
-            }
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> updateWindowBounds()
             else -> {}
         }
     }
@@ -77,18 +62,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             var rect: Rect? = null
             if (!targetPkg.isNullOrEmpty()) {
                 windows?.forEach { w ->
-                    val r = Rect()
-                    w.getBoundsInScreen(r)
-                    // heuristic: find window belonging to target package via title or via root
-                    // we just pick largest window that overlaps
+                    val r = Rect(); w.getBoundsInScreen(r)
                     if (rect == null || r.width()*r.height() > rect!!.width()*rect!!.height()) rect = r
                 }
             } else {
-                // Use active window root bounds as fallback
                 rootInActiveWindow?.let { root ->
-                    val r = Rect()
-                    root.getBoundsInScreen(r)
-                    rect = r
+                    val r = Rect(); root.getBoundsInScreen(r); rect = r
                 }
             }
             if (rect != null) lastWindowBounds = rect
@@ -96,22 +75,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     private fun getCurrentWindowRect(eventPackage: String): Rect {
-        // Try to find window rect for event package
         try {
             windows?.forEach { w ->
-                val r = Rect()
-                w.getBoundsInScreen(r)
-                // if we have targetPackage, prefer matching window's package via root?
-                // AccessibilityWindowInfo doesn't expose package directly except title
-                // So we approximate: return first non-system window with reasonable size
-                if (r.width() > 100 && r.height() > 100) {
-                    // check if this window contains the event source bounds
-                    eventPackage // unused, heuristic
-                    return r
-                }
+                val r = Rect(); w.getBoundsInScreen(r)
+                if (r.width() > 100 && r.height() > 100) return r
             }
         } catch (_: Exception) {}
-        // fallback to display size or last known
         lastWindowBounds?.let { return it }
         val dm = resources.displayMetrics
         return Rect(0, 0, dm.widthPixels, dm.heightPixels)
@@ -119,15 +88,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     private fun handleClick(event: AccessibilityEvent) {
         val source = event.source ?: return
-        val bounds = Rect()
-        source.getBoundsInScreen(bounds)
+        val bounds = Rect(); source.getBoundsInScreen(bounds)
         if (bounds.isEmpty) return
-        val cx = bounds.centerX()
-        val cy = bounds.centerY()
+        val cx = bounds.centerX(); val cy = bounds.centerY()
         val winRect = getWindowRectForSource(source) ?: getCurrentWindowRect(event.packageName.toString())
         val relX = ((cx - winRect.left).toFloat() / winRect.width().coerceAtLeast(1)).coerceIn(0f,1f)
         val relY = ((cy - winRect.top).toFloat() / winRect.height().coerceAtLeast(1)).coerceIn(0f,1f)
-
         val action = Action(
             type = ActionType.CLICK,
             relX = relX, relY = relY,
@@ -154,32 +120,19 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     private fun handleScroll(event: AccessibilityEvent) {
-        // event.scrollX/Y not reliable, we record swipe relative
-        // Use source bounds to infer scroll delta
         val source = event.source ?: return
-        val bounds = Rect(); source.getBoundsInScreen(bounds)
         val winRect = getWindowRectForSource(source) ?: getCurrentWindowRect(event.packageName.toString())
-        val fromX = 0.5f; val fromY = 0.7f; val toY = 0.3f
-        // Determine direction via scroll delta if available
-        val scrollDeltaX = event.scrollDeltaX
-        val scrollDeltaY = event.scrollDeltaY
-        var relEndX = fromX; var relEndY = toY
-        if (scrollDeltaY < 0) { // scroll up
-            relEndY = 0.7f
-        }
-        // generic swipe
-        addAction(Action(type=ActionType.SCROLL, relX=fromX, relY=fromY, relEndX=relEndX, relEndY=relEndY, windowLeft=winRect.left, windowTop=winRect.top, windowWidth=winRect.width(), windowHeight=winRect.height(), packageName=event.packageName.toString(), delayMs=500, durationMs=300))
+        val fromX = 0.5f; val fromY = 0.7f; var relEndY = 0.3f
+        if (event.scrollDeltaY < 0) relEndY = 0.7f
+        addAction(Action(type=ActionType.SCROLL, relX=fromX, relY=fromY, relEndX=0.5f, relEndY=relEndY, windowLeft=winRect.left, windowTop=winRect.top, windowWidth=winRect.width(), windowHeight=winRect.height(), packageName=event.packageName.toString(), delayMs=500, durationMs=300))
         lastRecordTime = System.currentTimeMillis()
     }
 
     private fun getWindowRectForSource(source: AccessibilityNodeInfo): Rect? {
         return try {
-            // Traverse to window via AccessibilityWindowInfo if available (API 21+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 val win = source.window
-                if (win != null) {
-                    val r = Rect(); win.getBoundsInScreen(r); return r
-                }
+                if (win != null) { val r = Rect(); win.getBoundsInScreen(r); return r }
             }
             null
         } catch (_: Exception) { null }
@@ -200,7 +153,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch {
             var success = true
             for (a in task.actions) {
-                val ok = executeAction(a)
+                val ok = executeAction(a, task)
                 if (!ok) success = false
                 delay(a.delayMs)
             }
@@ -208,21 +161,87 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
     }
 
-    private suspend fun executeAction(action: Action): Boolean {
+    private suspend fun executeAction(action: Action, task: com.autoclick.replay.model.Task): Boolean {
         return when(action.type) {
             ActionType.CLICK -> dispatchClick(action)
             ActionType.LONG_CLICK -> dispatchLongClick(action)
             ActionType.SWIPE, ActionType.SCROLL -> dispatchSwipe(action)
             ActionType.BACK -> { performGlobalAction(GLOBAL_ACTION_BACK); true }
-            ActionType.INPUT_TEXT -> false
+            ActionType.INPUT_TEXT -> dispatchInput(action, task)
         }
+    }
+
+    private fun resolveInputText(action: Action, task: com.autoclick.replay.model.Task): String {
+        // priority: paramId -> paramIndex -> inputText with placeholders
+        action.paramId?.let { pid ->
+            task.params.find { it.id == pid }?.let { return it.value }
+        }
+        action.paramIndex?.let { idx ->
+            if (idx in task.params.indices) return task.params[idx].value
+        }
+        var txt = action.inputText ?: ""
+        // replace {{p0}}, {{p1}} or {{paramId}} placeholders
+        task.params.forEachIndexed { i, p ->
+            txt = txt.replace("{{p${i}}}", p.value)
+            txt = txt.replace("{{${p.id}}}", p.value)
+            if (p.label.isNotEmpty()) txt = txt.replace("{{${p.label}}}", p.value)
+        }
+        return txt
+    }
+
+    private suspend fun dispatchInput(a: Action, task: com.autoclick.replay.model.Task): Boolean {
+        val text = resolveInputText(a, task)
+        // try to find target edit text
+        var node: AccessibilityNodeInfo? = null
+        if (!a.viewId.isNullOrEmpty()) node = findNodeByViewId(a.viewId)
+        if (node == null) node = findEditableNode()
+        // also try by coordinates: find node at position
+        if (node == null) {
+            val winRect = resolveCurrentWindowRect(a)
+            val x = winRect.left + a.relX * winRect.width()
+            val y = winRect.top + a.relY * winRect.height()
+            // click to focus then input
+            dispatchGestureAt(x, y, 80)
+            delay(300)
+            node = findEditableNode() ?: findNodeByViewId(a.viewId ?: "")
+        }
+        if (node != null) {
+            val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+            val res = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            if (res) return true
+            // fallback: clipboard paste
+            try {
+                node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                delay(150)
+                // use clipboard
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("autoclick", text))
+                val pasted = node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+                if (pasted) return true
+            } catch (_: Exception) {}
+        }
+        // ultimate fallback: dispatch typing via gesture? just return false
+        return false
+    }
+
+    private fun findEditableNode(): AccessibilityNodeInfo? {
+        val root = rootInActiveWindow ?: return null
+        return findEditableRecursive(root)
+    }
+    private fun findEditableRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (node.isEditable || node.className?.contains("EditText") == true) return node
+        for (i in 0 until node.childCount) {
+            val c = node.getChild(i) ?: continue
+            val r = findEditableRecursive(c)
+            if (r != null) return r
+        }
+        return null
     }
 
     private suspend fun dispatchClick(a: Action): Boolean {
         val winRect = resolveCurrentWindowRect(a)
         val x = winRect.left + a.relX * winRect.width()
         val y = winRect.top + a.relY * winRect.height()
-        // try viewId click first
         if (!a.viewId.isNullOrEmpty()) {
             val node = findNodeByViewId(a.viewId)
             if (node != null) {
@@ -250,30 +269,24 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     private fun resolveCurrentWindowRect(a: Action): Rect {
-        // If targetPackage specified, try to find its window bounds live
         if (a.packageName.isNotEmpty()) {
             try {
                 windows?.forEach { w ->
                     val r = Rect(); w.getBoundsInScreen(r)
-                    if (r.width() > 200 && r.height() > 200) {
-                        // Heuristically, pick window whose bounds contain previous window size ratio
-                        // For floating/split, we just take the largest foreground window that is not our overlay
-                        return r
-                    }
+                    if (r.width() > 200 && r.height() > 200) return r
                 }
             } catch (_: Exception) {}
         }
-        // fallback: try to get active window's root bounds
         rootInActiveWindow?.let { root ->
             val r = Rect(); root.getBoundsInScreen(r); if (!r.isEmpty) return r
         }
-        // fallback to last known or display
         lastWindowBounds?.let { return it }
         val dm = resources.displayMetrics
         return Rect(0,0,dm.widthPixels, dm.heightPixels)
     }
 
     private fun findNodeByViewId(viewId: String): AccessibilityNodeInfo? {
+        if (viewId.isEmpty()) return null
         val root = rootInActiveWindow ?: return null
         val list = root.findAccessibilityNodeInfosByViewId(viewId)
         return list.firstOrNull()
@@ -284,8 +297,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val path = Path().apply { moveTo(x, y) }
             val gesture = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, duration)).build()
             dispatchGesture(gesture, object: GestureResultCallback(){
-                override fun onCompleted(g: GestureDescription?) { cont.resume(true) {} }
-                override fun onCancelled(g: GestureDescription?) { cont.resume(false) {} }
+                override fun onCompleted(g: GestureDescription?) { cont.resume(true) }
+                override fun onCancelled(g: GestureDescription?) { cont.resume(false) }
             }, null)
         }
     }
@@ -295,8 +308,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val path = Path().apply { moveTo(sx, sy); lineTo(ex, ey) }
             val gesture = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, dur.coerceAtLeast(100))).build()
             dispatchGesture(gesture, object: GestureResultCallback(){
-                override fun onCompleted(g: GestureDescription?) { cont.resume(true) {} }
-                override fun onCancelled(g: GestureDescription?) { cont.resume(false) {} }
+                override fun onCompleted(g: GestureDescription?) { cont.resume(true) }
+                override fun onCancelled(g: GestureDescription?) { cont.resume(false) }
             }, null)
         }
     }
