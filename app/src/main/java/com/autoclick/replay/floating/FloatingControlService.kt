@@ -69,40 +69,7 @@ class FloatingControlService : Service() {
         // Drag via FAB
         var initialX = 0; var initialY = 0; var initialTouchX = 0f; var initialTouchY = 0f
         var isDragging = false
-        fabMain.setOnTouchListener { _, event ->
-            when(event.action){
-                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - initialTouchX).toInt(); val dy = (event.rawY - initialTouchY).toInt()
-                    if (Math.abs(dx)>10 || Math.abs(dy)>10) isDragging=true
-                    // For BOTTOM|END gravity, x increases to left, y to top
-                    params.x = initialX - dx; params.y = initialY - dy
-                    windowManager?.updateViewLayout(floatingView, params); true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!isDragging) { toggleMenu() }
-                    isDragging
-                }
-                else -> false
-            }
-        }
-        // Also drag via header if panel open
-        val header = floatingView!!.findViewById<View>(R.id.headerDrag)
-        header?.setOnTouchListener { _, event ->
-            when(event.action){
-                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; true}
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX - (event.rawX - initialTouchX).toInt()
-                    params.y = initialY - (event.rawY - initialTouchY).toInt()
-                    windowManager?.updateViewLayout(floatingView, params); true
-                }
-                else -> false
-            }
-        }
-
-
-
-
+        lateinit var refreshAllWrapper: ()->Unit
         fun togglePanel() {
             isPanelOpen = !isPanelOpen
             panelContainer.visibility = if (isPanelOpen) View.VISIBLE else View.GONE
@@ -112,7 +79,7 @@ class FloatingControlService : Service() {
                 fabMain.animate().rotation(0f).start()
             }
         }
-        lateinit var refreshAllWrapper: ()->Unit
+
         fun refreshQuickButtons() {
             quickContainer.removeAllViews()
             val tasks = TaskRepository.load(this).filter { it.isQuick }
@@ -186,8 +153,43 @@ class FloatingControlService : Service() {
             refreshQuickButtons()
         }
 
+        fabMain.setOnTouchListener { _, event ->
+            when(event.action){
+                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; isDragging=false; true}
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - initialTouchX).toInt(); val dy = (event.rawY - initialTouchY).toInt()
+                    if (Math.abs(dx)>10 || Math.abs(dy)>10) isDragging=true
+                    // For BOTTOM|END gravity, x increases to left, y to top
+                    params.x = initialX - dx; params.y = initialY - dy
+                    windowManager?.updateViewLayout(floatingView, params); true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!isDragging) { toggleMenu() }
+                    isDragging
+                }
+                else -> false
+            }
+        }
+        val header = floatingView!!.findViewById<View>(R.id.headerDrag)
+        header?.setOnTouchListener { _, event ->
+            when(event.action){
+                MotionEvent.ACTION_DOWN -> { initialX=params.x; initialY=params.y; initialTouchX=event.rawX; initialTouchY=event.rawY; true}
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX - (event.rawX - initialTouchX).toInt()
+                    params.y = initialY - (event.rawY - initialTouchY).toInt()
+                    windowManager?.updateViewLayout(floatingView, params); true
+                }
+                else -> false
+            }
+        }
 
-                // Panel inner views (find via floatingView)
+        // Also drag via header if panel open
+
+
+
+
+
+        // Panel inner views (find via floatingView)
         val txtStatus = floatingView!!.findViewById<TextView>(R.id.txtFloatingStatusFull)
         val btnRec = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingRecFull)
         val btnPlay = floatingView!!.findViewById<MaterialButton>(R.id.btnFloatingPlayFull)
