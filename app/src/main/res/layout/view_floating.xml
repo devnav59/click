@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content" android:layout_height="wrap_content" app:cardCornerRadius="24dp" app:cardElevation="8dp">
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="8dp" android:gravity="center_vertical">
+        <TextView android:id="@+id/txtFloatingStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/idle" android:paddingHorizontal="8dp"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnFloatingRec" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="● ضبط" android:textSize="12sp" style="@style/Widget.Material3.Button.TonalButton"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnFloatingPlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶ اجرا" android:textSize="12sp"/>
+        <ImageButton android:id="@+id/btnFloatingClose" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_close_clear_cancel" android:background="?attr/selectableItemBackgroundBorderless"/>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">AutoClick Tasks</string>
+    <string name="accessibility_desc">برای ضبط و اجرای خودکار کلیک و اسکرول روی اپلیکیشن‌های دیگر. مختصات به صورت نسبی ذخیره می‌شود تا در حالت شناور و تقسیم صفحه دقیق کار کند.</string>
+    <string name="create_task">ساخت وظیفه</string>
+    <string name="task_name_hint">نام وظیفه</string>
+    <string name="target_package_hint">پکیج هدف (اختیاری، مثلا com.instagram.android)</string>
+    <string name="start_recording">شروع ضبط</string>
+    <string name="stop_recording">توقف ضبط</string>
+    <string name="play_task">اجرای وظیفه</string>
+    <string name="delete">حذف</string>
+    <string name="edit">ویرایش</string>
+    <string name="no_tasks">هنوز وظیفه‌ای نساخته‌اید</string>
+    <string name="accessibility_required">سرویس دسترسی غیرفعال است. لطفا فعال کنید.</string>
+    <string name="overlay_required">مجوز نمایش روی سایر برنامه‌ها لازم است.</string>
+    <string name="enable_accessibility">فعال‌سازی دسترسی</string>
+    <string name="enable_overlay">اعطای مجوز شناور</string>
+    <string name="floating_title">کنترل شناور</string>
+    <string name="recording">در حال ضبط…</string>
+    <string name="idle">آماده</string>
+    <string name="actions">اقدامات (%1$d)</string>
+    <string name="duration_ms">تاخیر (میلی‌ثانیه)</string>
+</resources>
