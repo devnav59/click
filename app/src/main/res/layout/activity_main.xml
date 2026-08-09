@@ -2,57 +2,253 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FFFBFE">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        app:liftOnScroll="true">
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name" />
+            app:title="اتوکلیک شناور"
+            app:titleCentered="true"
+            style="@style/Widget.Material3.Toolbar.Surface"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:padding="12dp">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardWarning"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:cardElevation="2dp"
-            android:layout_marginBottom="12dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
-                <TextView android:id="@+id/txtWarning" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#B3261E"/>
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
-                    <com.google.android.material.button.MaterialButton android:id="@+id/btnEnableAccessibility" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/enable_accessibility" android:visibility="gone"/>
-                    <com.google.android.material.button.MaterialButton android:id="@+id/btnEnableOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/enable_overlay" android:layout_marginStart="8dp" android:visibility="gone"/>
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Hero -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#E7E0EC"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:text="◈"
+                        android:textSize="28sp"
+                        android:gravity="center"
+                        android:textColor="#6750A4"
+                        android:background="@drawable/bg_chip"
+                        android:padding="8dp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="همه چیز در پنل شناور"
+                        android:textStyle="bold"
+                        android:textSize="18sp"
+                        android:layout_marginTop="12dp"
+                        android:textColor="#1D1B20"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="نیازی به خروج از اپ نیست. پنل ما همیشه روی صفحه است، اپ هدف را هم به صورت پنجره شناور باز کن و بدون وقفه ضبط و اجرا کن. دکمه‌های پنل ذخیره نمی‌شوند."
+                        android:textSize="13sp"
+                        android:textColor="#49454F"
+                        android:lineSpacingExtra="2dp"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHowToFreeform"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="آموزش پنجره شناور"
+                        android:layout_marginTop="12dp"
+                        app:cornerRadius="12dp"/>
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Steps -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="مراحل"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="88dp"
+                    app:cardCornerRadius="16dp"
+                    android:layout_marginEnd="6dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#E7E0EC"
+                    app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="8dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="۱" android:textStyle="bold" android:textColor="#6750A4"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="مجوزها" android:textSize="12sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="دسترسی + شناور" android:textSize="10sp" android:textColor="#666" android:gravity="center"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="88dp"
+                    app:cardCornerRadius="16dp"
+                    android:layout_marginHorizontal="6dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#E7E0EC"
+                    app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="8dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="۲" android:textStyle="bold" android:textColor="#6750A4"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="پنل" android:textSize="12sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="باز کردن پنل" android:textSize="10sp" android:textColor="#666" android:gravity="center"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="88dp"
+                    app:cardCornerRadius="16dp"
+                    android:layout_marginStart="6dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#E7E0EC"
+                    app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="8dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="۳" android:textStyle="bold" android:textColor="#6750A4"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ضبط" android:textSize="12sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="روی اپ شناور" android:textSize="10sp" android:textColor="#666" android:gravity="center"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerTasks"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"/>
+            <!-- Accessibility permission -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAccNeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#FFB4AB"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="سرویس دسترسی خاموش است" android:textStyle="bold" android:textSize="13sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="برای کلیک خودکار لازم است" android:textSize="11sp" android:textColor="#666"/>
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/btnEnableAccessibility" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="فعال‌سازی" app:cornerRadius="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-        <TextView android:id="@+id/txtEmpty" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/no_tasks" android:gravity="center" android:padding="24dp" android:visibility="gone"/>
-    </LinearLayout>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAccOk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                android:visibility="gone"
+                app:cardElevation="0dp"
+                app:strokeColor="#7FCDA0"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="✓ سرویس دسترسی فعال" android:textColor="#0F5E2E" android:textStyle="bold"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:text="@string/create_task"
-        app:icon="@android:drawable/ic_input_add"/>
+            <!-- Overlay permission -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOverlayNeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#FFB4AB"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="مجوز شناور لازم است" android:textStyle="bold" android:textSize="13sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="برای نمایش پنل روی همه اپ‌ها" android:textSize="11sp" android:textColor="#666"/>
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/btnEnableOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="اعطا" app:cornerRadius="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOverlayOk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#7FCDA0"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="✓ مجوز شناور اعطا شده" android:textColor="#0F5E2E" android:textStyle="bold"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Start floating -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                android:backgroundTint="#E8DEF8"
+                android:layout_marginTop="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp" android:gravity="center">
+                    <TextView android:id="@+id/txtStartHint" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ابتدا مجوزها را فعال کن" android:textSize="12sp" android:textColor="#49454F" android:gravity="center"/>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartFloating"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="باز کردن پنل شناور"
+                        android:textSize="16sp"
+                        android:layout_marginTop="12dp"
+                        app:cornerRadius="16dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="تمام مدیریت وظایف، پارامترها و ضبط از داخل پنل انجام می‌شود" android:textSize="11sp" android:textColor="#666" android:gravity="center" android:layout_marginTop="8dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="نکته: دکمه‌های شروع/پایان ضبط هرگز به عنوان مرحله ذخیره نمی‌شوند (فیلتر بر اساس پکیج)."
+                android:textSize="11sp"
+                android:textColor="#888"
+                android:background="#F3EDF7"
+                android:padding="12dp"
+                android:layout_marginTop="16dp"/>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
